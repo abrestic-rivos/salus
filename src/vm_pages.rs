@@ -18,6 +18,7 @@ use riscv_regs::{
     hgatp, hstatus, DecodedInstruction, Exception, LocalRegisterCopy, PrivilegeLevel, Readable,
     RiscvCsrInterface, Writeable, CSR,
 };
+use s_mode_utils::print::*;
 use spin::{Mutex, Once};
 
 use crate::guest_tracking::GuestVm;
@@ -598,7 +599,18 @@ impl<'a, T: GuestStagePagingMode> ActiveVmPages<'a, T> {
         measurement: &AttestationManager<D, H>,
     ) -> Result<u64> {
         let converted_pages = self.vm_pages.get_converted_pages(from_addr, count)?;
-        let mapper = to.map_measured_pages(to_addr, count)?;
+        let mapper = match to.map_measured_pages(to_addr, count) {
+            Ok(m) => m,
+            Err(e) => {
+                println!(
+                    "map_measured_pages(0x{:x}, {}) failed: {:?}",
+                    to_addr.bits(),
+                    count,
+                    e
+                );
+                return Err(e);
+            }
+        };
 
         // Make sure we can initialize the full set of pages before mapping them.
         let page_tracker = self.vm_pages.page_tracker();
