@@ -318,7 +318,7 @@ impl<'elf> ElfMap<'elf> {
     }
 
     /// Return an iterator containings loadable segments of this ELF file.
-    pub fn segments(&'elf self) -> impl Iterator<Item = &'elf ElfSegment> {
+    pub fn segments(&self) -> impl Iterator<Item = &ElfSegment<'elf>> {
         self.segments.iter()
     }
 }
