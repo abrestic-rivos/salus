@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-use alloc::vec::Vec;
 use arrayvec::ArrayVec;
 use page_tracking::{HwMemMap, HwMemRegion, HwMemRegionType, HwReservedMemType, HypPageAlloc};
 use riscv_elf::{ElfMap, ElfSegment, ElfSegmentPerms};
@@ -106,14 +105,14 @@ struct HypMapPopulatedRegion {
     // PTE bits for the mappings.
     pte_fields: PteFieldBits,
     // Data to be populated in the VA area
-    data: Vec<u8>,
+    data: &'static [u8],
     // Offset from `vaddr` where the data must be copied.
     offset: u64,
 }
 
 impl HypMapPopulatedRegion {
     // Creates an user space virtual address region from a ELF segment.
-    fn from_user_elf_segment(seg: &ElfSegment) -> Option<Self> {
+    fn from_user_elf_segment(seg: &ElfSegment<'static>) -> Option<Self> {
         // Sanity Check for segment alignments.
         //
         // In general ELF might have segments overlapping in the same page, possibly with different
@@ -140,12 +139,11 @@ impl HypMapPopulatedRegion {
         let size = end - base;
         let pte_fields = PteFieldBits::leaf_with_perms(pte_perms);
         let offset = seg_start - base;
-        let data = Vec::from(seg.data());
         Some(HypMapPopulatedRegion {
             vaddr,
             size,
             pte_fields,
-            data,
+            data: seg.data(),
             offset,
         })
     }
@@ -206,7 +204,7 @@ pub struct HypMap {
 
 impl HypMap {
     /// Create a new hypervisor map from a hardware memory mem map.
-    pub fn new(mem_map: HwMemMap, elf_map: ElfMap) -> HypMap {
+    pub fn new(mem_map: HwMemMap, elf_map: ElfMap<'static>) -> HypMap {
         // All supervisor regions comes from the HW memory map.
         let supervisor_regions = mem_map
             .regions()
